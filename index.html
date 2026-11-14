@@ -190,6 +190,7 @@
   /* ---------- Radar time readout (header) ---------- */
   .radar-now { white-space: nowrap; min-width: 190px; }
   .radar-now b { color: var(--text); font-weight: 600; }
+  .radar-now b.latest { color: var(--accent); }
 
   /* ---------- Alert dialog ---------- */
   dialog {
@@ -305,7 +306,7 @@ const LOCATIONS = [
 const HOME_TZ = "America/Chicago";          // offsets are shown relative to Central
 const RADAR_WMS = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows"; // NOAA MRMS QC'd base reflectivity
 const RADAR_WINDOW_MIN = 60, RADAR_STEP_MIN = 5;
-const FRAME_MS = 500, HOLD_MS = 2200;
+const FRAME_MS = 500, HOLD_MS = 6000;      // HOLD_MS: how long the loop rests on the latest (current) scan
 const WX_REFRESH_MS = 10 * 60e3, RADAR_REFRESH_MS = 2.5 * 60e3, ALERT_REFRESH_MS = 3 * 60e3;
 const IDLE_RESET_MS = 3 * 60e3;              // maps snap back to home view after idle
 
@@ -582,7 +583,8 @@ function showFrame(i) {
   const t = new Date(state.radarTimes[i]);
   $("#frameTime").textContent = fmtTime(t, HOME_TZ);
   const age = Math.max(0, Math.round((Date.now() - t.getTime()) / 60e3));
-  $("#frameAgo").textContent = `· ${age} min ago${state.playing ? "" : " (paused)"}`;
+  const latest = i === state.radarTimes.length - 1;
+  $("#frameAgo").innerHTML = `· ${latest ? '<b class="latest">Latest</b> · ' : ""}${age} min ago${state.playing ? "" : " (paused)"}`;
 }
 
 let animT;
