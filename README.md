@@ -14,8 +14,8 @@ A single-page, wallboard-style weather dashboard for five sites:
 
 ## What's on it
 
-- **Condition tiles** — temperature with 1-hour trend, conditions, high/low, feels-like, wind/gusts, humidity, dew point, and a 12-hour temperature + precipitation-chance sparkline. Local time is shown with the offset from Central.
-- **Radar** — NOAA MRMS quality-controlled base reflectivity (the same mosaic used by radar.weather.gov), refreshed about every 2 minutes. All five maps animate the last hour together on one shared timeline.
+- **Condition tiles** (along the bottom) — temperature with 1-hour trend, conditions, high/low, feels-like, wind direction/speed/gusts, humidity, and the highest rain chance over the next 12 hours. Local time is shown with the offset from Central.
+- **Radar** — NOAA MRMS quality-controlled base reflectivity (the same mosaic used by radar.weather.gov), refreshed about every 2 minutes. All five maps animate the last hour together on one shared timeline at the top. Major roads and highway shields are drawn over the radar for reference.
 - **NWS alerts** — active warnings, watches, and advisories for each site. Warning polygons are drawn on the maps; click a tile's alert chip for the full text.
 
 Maps return to their home view 3 minutes after you pan or zoom. Data refreshes on its own, and the page fully reloads every 6 hours so a TV can run it unattended.
