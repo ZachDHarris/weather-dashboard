@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ezee Fiber Weather Board</title>
-<meta name="description" content="Live NEXRAD radar, current conditions, and NWS alerts for Houston, Albuquerque, Kent, Streamwood/Naperville, and Novi.">
+<meta name="description" content="Live NEXRAD radar, current conditions, and NWS alerts for Houston, Albuquerque, Santa Fe, Kent, Salem, Streamwood/Naperville, and Novi.">
 <meta name="theme-color" content="#131E29">
 <link rel="icon" href="assets/ezee-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://api.fontshare.com">
@@ -332,18 +332,19 @@ const LOCATIONS = [
   { id: "hou",  name: "Houston",     st: "TX", region: "Houston Region",
     lat: 29.7604, lon: -95.3698, tz: "America/Chicago", pinDrop: 18,   // px: nudge the pin below the map's city label
     bounds: [[29.15, -96.45], [30.62, -94.40]] },
-  { id: "abq",  name: "Albuquerque", st: "NM", region: "Albuquerque · Central New Mexico",
+  { id: "abq",  name: "Albuquerque", st: "NM", region: "Albuquerque Region",
     lat: 35.0844, lon: -106.6504, tz: "America/Denver", pinDrop: 18,
-    bounds: [[34.72, -107.05], [35.40, -106.20]] },
-  { id: "kent", name: "Kent",        st: "WA", region: "Kent + Salem · Pacific Northwest",
+    bounds: [[34.80, -107.10], [35.85, -105.65]],
+    extra: [{ id: "saf", name: "Santa Fe", st: "NM", lat: 35.6870, lon: -105.9378, tz: "America/Denver", pinDrop: 16 }] },
+  { id: "kent", name: "Kent",        st: "WA", region: "Pacific Northwest",
     lat: 47.3809, lon: -122.2348, tz: "America/Los_Angeles",
     bounds: [[44.70, -124.10], [47.90, -120.95]],
     extra: [{ id: "sal", name: "Salem", st: "OR", lat: 44.9429, lon: -123.0351, tz: "America/Los_Angeles", pinDrop: 16 }] },
-  { id: "stw",  name: "Streamwood",  st: "IL", region: "Streamwood + Naperville · Chicagoland",
+  { id: "stw",  name: "Streamwood",  st: "IL", region: "Chicago Midwest",
     lat: 42.0256, lon: -88.1784, tz: "America/Chicago",
     bounds: [[41.50, -88.75], [42.40, -87.55]],
     extra: [{ id: "nap", name: "Naperville", st: "IL", lat: 41.7508, lon: -88.1535, tz: "America/Chicago" }] },
-  { id: "novi", name: "Novi",        st: "MI", region: "Novi · Metro Detroit",
+  { id: "novi", name: "Novi",        st: "MI", region: "Metro Detroit Region",
     lat: 42.4806, lon: -83.4755, tz: "America/Detroit",
     bounds: [[42.05, -84.25], [43.00, -82.90]] },
 ];

@@ -5,10 +5,10 @@ A single-page, wallboard-style weather dashboard for five regions:
 | Site | Radar region |
 |---|---|
 | Houston, TX | Houston Region |
-| Albuquerque, NM | Central New Mexico |
+| Albuquerque + Santa Fe, NM | Albuquerque Region |
 | Kent, WA + Salem, OR | Pacific Northwest |
-| Streamwood + Naperville, IL | Chicagoland |
-| Novi, MI | Metro Detroit |
+| Streamwood + Naperville, IL | Chicago Midwest |
+| Novi, MI | Metro Detroit Region |
 
 **Live:** https://zachdharris.github.io/weather-dashboard/
 
