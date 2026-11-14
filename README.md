@@ -1,4 +1,4 @@
-# Regional Weather Board
+# Ezee Fiber Network Weather Board
 
 A single-page, wallboard-style weather dashboard for five sites:
 

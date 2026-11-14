@@ -3,25 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Regional Weather Board</title>
+<title>Ezee Fiber Weather Board</title>
 <meta name="description" content="Live NEXRAD radar, current conditions, and NWS alerts for Houston, Albuquerque, Kent, Streamwood/Naperville, and Novi.">
-<meta name="theme-color" content="#0b0f17">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0f17'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%2338bdf8' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='%2338bdf8' stroke-width='2' opacity='.6'/%3E%3Cpath d='M16 16 L24 9' stroke='%2322c55e' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#131E29">
+<link rel="icon" href="assets/ezee-mark.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
   :root {
-    --bg: #0b0f17;
-    --panel: #121826;
-    --panel-2: #172033;
-    --line: #232d42;
-    --text: #e6ebf5;
-    --muted: #8a96ad;
-    --faint: #5b6780;
-    --accent: #38bdf8;
-    --good: #22c55e;
+    --bg: #0F1821;
+    --panel: #131E29;
+    --panel-2: #1B2937;
+    --line: #26364A;
+    --text: #F4F4F6;
+    --muted: #A9B0B7;
+    --faint: #6D7073;
+    --accent: #FB612F;
+    --accent-dark: #D65830;
+    --brand-gray: #D9D9D6;
+    --rain: #38bdf8;
+    --good: #49C301;
     --warn: #f59e0b;
     --bad: #ef4444;
     --radius: 12px;
@@ -33,7 +35,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.4 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 14px/1.4 "General Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
   }
@@ -44,6 +46,7 @@
     height: 100vh;
     display: grid;
     grid-template-rows: auto auto 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--gap);
     padding: var(--gap);
   }
@@ -53,23 +56,30 @@
     display: flex; align-items: center; gap: 16px;
     padding: 4px 6px;
   }
-  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .brand svg { flex: none; }
-  .brand h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: .2px; white-space: nowrap; }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .brand .logo { flex: none; height: 34px; width: auto; display: block; }
+  .brand-div { width: 1px; align-self: stretch; margin: 4px 0; background: var(--line); }
+  .brand h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: .1px; white-space: nowrap; }
+  .brand h1 span { color: var(--accent); }
+  header.top { position: relative; padding-bottom: 10px !important; }
+  header.top::after {
+    content: ""; position: absolute; left: 6px; right: 6px; bottom: 0; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent) 0 140px, var(--line) 140px);
+  }
   .brand .sub { color: var(--muted); font-size: 12px; white-space: nowrap; }
   .top .spacer { flex: 1; }
   .status { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12px; }
-  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(34,197,94,.18); display: inline-block; margin-right: 6px; vertical-align: 1px; }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(73,195,1,.2); display: inline-block; margin-right: 6px; vertical-align: 1px; }
   .status .dot.stale { background: var(--warn); box-shadow: 0 0 0 3px rgba(245,158,11,.18); }
   .status .dot.err { background: var(--bad); box-shadow: 0 0 0 3px rgba(239,68,68,.18); }
-  .clock { font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: .3px; }
+  .clock { white-space: nowrap; font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: .3px; }
   .clock small { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 4px; }
   .icon-btn {
     background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
     width: 34px; height: 34px; display: inline-grid; place-items: center; cursor: pointer;
     color: var(--muted); transition: color .15s, border-color .15s, background .15s;
   }
-  .icon-btn:hover { color: var(--text); border-color: #34415d; background: var(--panel-2); }
+  .icon-btn:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
 
   /* ---------- Condition tiles ---------- */
   .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); }
@@ -115,7 +125,7 @@
     overflow: hidden; text-overflow: ellipsis;
   }
   .alert-chip.watch { background: rgba(245,158,11,.16); color: #fcd34d; }
-  .alert-chip.adv { background: rgba(56,189,248,.14); color: #7dd3fc; }
+  .alert-chip.adv { background: rgba(217,217,214,.12); color: var(--brand-gray); }
   .alert-chip:hover { filter: brightness(1.25); }
   .tile .skeleton { color: var(--faint); font-size: 12px; align-self: center; }
 
@@ -137,12 +147,13 @@
     border-bottom: 1px solid var(--line); font-size: 13px; min-width: 0;
   }
   .panel-head .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .panel-head::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
   .panel-head .meta { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; display: flex; gap: 10px; align-items: center; }
   .panel-head .meta .mini-temp { color: var(--text); font-weight: 600; }
-  .map { min-height: 0; background: #0e1320; }
+  .map { min-height: 0; background: #0F1821; }
   .map-btn {
     position: absolute; right: 10px; bottom: 10px; z-index: 500;
-    background: rgba(18,24,38,.85); border: 1px solid var(--line); border-radius: 8px;
+    background: rgba(19,30,41,.88); border: 1px solid var(--line); border-radius: 8px;
     color: var(--muted); font-size: 11px; padding: 4px 8px; cursor: pointer; display: none;
     backdrop-filter: blur(4px);
   }
@@ -150,11 +161,11 @@
   .map-btn:hover { color: var(--text); }
 
   /* Leaflet theming */
-  .leaflet-container { background: #0e1320; font: inherit; }
+  .leaflet-container { background: #0F1821; font: inherit; }
   .leaflet-control-zoom { border: 1px solid var(--line) !important; border-radius: 8px !important; overflow: hidden; }
-  .leaflet-control-zoom a { background: rgba(18,24,38,.9) !important; color: var(--muted) !important; border-bottom-color: var(--line) !important; width: 28px !important; height: 28px !important; line-height: 28px !important; }
+  .leaflet-control-zoom a { background: rgba(19,30,41,.92) !important; color: var(--muted) !important; border-bottom-color: var(--line) !important; width: 28px !important; height: 28px !important; line-height: 28px !important; }
   .leaflet-control-zoom a:hover { color: var(--text) !important; }
-  .leaflet-control-attribution { background: rgba(11,15,23,.7) !important; color: var(--faint) !important; font-size: 9px !important; }
+  .leaflet-control-attribution { background: rgba(15,24,33,.72) !important; color: var(--faint) !important; font-size: 9px !important; }
   .leaflet-control-attribution a { color: var(--muted) !important; }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.5); }
   .leaflet-popup-content { margin: 10px 12px; font-size: 12px; line-height: 1.45; }
@@ -164,8 +175,8 @@
     display: flex; align-items: center; gap: 5px; white-space: nowrap;
     transform: translate(-7px, -7px);
   }
-  .pin .pt { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 3px solid #0b0f17; box-shadow: 0 0 0 2px var(--accent), 0 0 12px rgba(56,189,248,.6); flex: none; }
-  .pin .lbl { background: rgba(11,15,23,.85); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 600; color: var(--text); }
+  .pin .pt { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 3px solid #131E29; box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(251,97,47,.65); flex: none; }
+  .pin .lbl { background: rgba(19,30,41,.9); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 600; color: var(--text); }
   .pin .lbl span { color: var(--muted); font-weight: 500; margin-right: 4px; }
 
   /* ---------- Timeline footer ---------- */
@@ -174,15 +185,15 @@
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 8px 12px;
   }
-  .play { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--accent); color: #062033; display: grid; place-items: center; cursor: pointer; flex: none; }
+  .play { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; flex: none; }
   .play:hover { filter: brightness(1.1); }
   .frames { flex: 1; display: flex; gap: 3px; align-items: stretch; min-width: 120px; height: 28px; }
   .frame {
     flex: 1; border: 0; padding: 0; cursor: pointer; border-radius: 4px; position: relative;
     background: var(--panel-2); transition: background .15s;
   }
-  .frame:hover { background: #24304a; }
-  .frame.loaded { background: #1d2840; }
+  .frame:hover { background: #2A3B4F; }
+  .frame.loaded { background: #22324A; }
   .frame.active { background: var(--accent); }
   .frame .tip { position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); font-size: 11px; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); padding: 2px 6px; border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; }
   .frame:hover .tip { opacity: 1; }
@@ -202,7 +213,7 @@
     padding: 0; width: min(720px, calc(100vw - 32px)); max-height: min(80vh, 800px);
     box-shadow: 0 24px 64px rgba(0,0,0,.6);
   }
-  dialog::backdrop { background: rgba(3,6,12,.65); backdrop-filter: blur(2px); }
+  dialog::backdrop { background: rgba(8,13,19,.7); backdrop-filter: blur(2px); }
   .dlg-head { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
   .dlg-head h2 { margin: 0; font-size: 16px; }
   .dlg-head .icon-btn { margin-left: auto; }
@@ -231,7 +242,10 @@
     :root { --gap: 8px; }
     .app { padding: 8px 16px; }
     .maps { grid-template-columns: 1fr; grid-auto-rows: 340px; }
-    .brand .sub, .status .upd { display: none; }
+    .brand .sub, .status .upd, .brand-div { display: none; }
+    .brand .logo { height: 26px; }
+    .brand h1 { display: none; }
+    .status { gap: 8px; }
     .clock { font-size: 18px; }
     .frame-time { min-width: 0; flex: 1; }
     .legend { order: 5; width: 100%; min-width: 0; }
@@ -243,9 +257,10 @@
 <div class="app">
   <header class="top">
     <div class="brand">
-      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#121826" stroke="#232d42"/><circle cx="16" cy="16" r="10" fill="none" stroke="#38bdf8" stroke-width="1.6"/><circle cx="16" cy="16" r="5" fill="none" stroke="#38bdf8" stroke-width="1.6" opacity=".55"/><path d="M16 16 L24 9" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <img class="logo" src="assets/ezee-logo-white.svg" alt="Ezee Fiber" width="124" height="38">
+      <span class="brand-div" aria-hidden="true"></span>
       <div>
-        <h1>Regional Weather Board</h1>
+        <h1>Network Weather <span>Board</span></h1>
         <div class="sub">NOAA MRMS radar · current conditions · NWS alerts</div>
       </div>
     </div>
