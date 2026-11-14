@@ -45,7 +45,7 @@
   .app {
     height: 100vh;
     display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto 1fr;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--gap);
     padding: var(--gap);
@@ -187,35 +187,9 @@
   .pin .lbl { background: rgba(19,30,41,.9); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 600; color: var(--text); }
   .pin .lbl span { color: var(--muted); font-weight: 500; margin-right: 4px; }
 
-  /* ---------- Radar timeline (top strip) ---------- */
-  .timeline {
-    position: relative; z-index: 1000;
-    display: flex; align-items: center; gap: 12px;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    padding: 4px 10px;
-  }
-  .play { width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; flex: none; }
-  .play svg { width: 12px; height: 12px; }
-  .play:hover { filter: brightness(1.1); }
-  .frames { flex: 1; display: flex; gap: 3px; align-items: stretch; min-width: 120px; height: 12px; }
-  .frame {
-    flex: 1; border: 0; padding: 0; cursor: pointer; border-radius: 4px; position: relative;
-    background: var(--panel-2); transition: background .15s;
-  }
-  .frame:hover { background: #2A3B4F; }
-  .frame.loaded { background: #22324A; }
-  .frame.active { background: var(--accent); }
-  .frame .tip { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); font-size: 11px; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); padding: 2px 6px; border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; }
-  .frame:hover .tip { opacity: 1; }
-  .frame-time { min-width: 200px; font-size: 12px; white-space: nowrap; }
-  .frame-time b { font-size: 13px; }
-  .frame-time span { color: var(--muted); font-size: 11px; margin-left: 6px; }
-  .legend { display: flex; flex-direction: column; gap: 1px; min-width: 200px; }
-  .legend .bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, #04e9e7 0%, #019ff4 8%, #0300f4 16%, #02fd02 24%, #01c501 32%, #008e00 40%, #fdf802 48%, #e5bc00 56%, #fd9500 64%, #fd0000 72%, #d40000 78%, #bc0000 84%, #f800fd 92%, #9854c6 100%); }
-  .legend .scale { display: flex; justify-content: space-between; font-size: 9px; line-height: 1.2; color: var(--muted); }
-  .src { font-size: 10px; color: var(--faint); text-align: right; line-height: 1.3; }
-  .src a { color: var(--muted); text-decoration: none; }
-  .src a:hover { color: var(--text); }
+  /* ---------- Radar time readout (header) ---------- */
+  .radar-now { white-space: nowrap; min-width: 190px; }
+  .radar-now b { color: var(--text); font-weight: 600; }
 
   /* ---------- Alert dialog ---------- */
   dialog {
@@ -241,8 +215,6 @@
   @media (max-width: 1280px) {
     .temp { font-size: 30px; }
     .wx-icon { width: 30px; height: 30px; }
-    .legend { min-width: 160px; }
-    .src { display: none; }
   }
   @media (max-width: 1100px) {
     .app { height: auto; min-height: 100vh; }
@@ -250,21 +222,16 @@
     .maps { grid-template-columns: 1fr 1fr; grid-template-rows: none; grid-auto-rows: 380px; }
     .maps .panel:nth-child(n) { grid-column: auto; }
     .maps .panel:nth-child(1) { grid-column: 1 / -1; }
-    .timeline { position: sticky; top: var(--gap); flex-wrap: wrap; }
-    .tiles { order: 2; } .maps { order: 3; }   /* on phones/tablets keep temps above the long map stack */
   }
   @media (max-width: 700px) {
     :root { --gap: 8px; }
     .app { padding: 8px 16px; }
     .maps { grid-template-columns: 1fr; grid-auto-rows: 340px; }
-    .brand .sub, .status .upd, .brand-div { display: none; }
+    .brand .sub, .status .upd, .status .radar-now, .brand-div { display: none; }
     .brand .logo { height: 26px; }
     .brand h1 { display: none; }
     .status { gap: 8px; }
     .clock { font-size: 18px; }
-    .frame-time { min-width: 0; flex: 1; }
-    .legend { order: 5; width: 100%; min-width: 0; }
-    .frames { order: 4; flex-basis: 100%; }
   }
 </style>
 </head>
@@ -281,6 +248,7 @@
     </div>
     <div class="spacer"></div>
     <div class="status">
+      <span class="radar-now" title="Radar time shown on the maps · Space pauses, ← → step">Radar <b id="frameTime">--:--</b> <span id="frameAgo">loading…</span></span>
       <span class="upd"><span class="dot" id="statusDot"></span><span id="statusText">Loading…</span></span>
       <span class="clock" id="clock">--:--</span>
       <button class="icon-btn" id="refreshBtn" title="Refresh now (R)" aria-label="Refresh now">
@@ -292,23 +260,9 @@
     </div>
   </header>
 
-  <section class="timeline" aria-label="Radar timeline">
-    <button class="play" id="playBtn" aria-label="Pause radar loop" title="Play / pause (Space)"></button>
-    <div class="frame-time"><b id="frameTime">--:--</b><span id="frameAgo">Loading radar…</span></div>
-    <div class="frames" id="frames" role="group" aria-label="Radar frames"></div>
-    <div class="legend" aria-label="Radar reflectivity legend">
-      <div class="bar"></div>
-      <div class="scale"><span>Light</span><span>Moderate</span><span>Heavy</span><span>Severe</span></div>
-    </div>
-    <div class="src">
-      Radar: <a href="https://www.nssl.noaa.gov/projects/mrms/" target="_blank" rel="noopener">NOAA MRMS</a><br>
-      Wx: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · Alerts: <a href="https://www.weather.gov/" target="_blank" rel="noopener">NWS</a>
-    </div>
-  </section>
+  <section class="tiles" id="tiles" aria-label="Current conditions"></section>
 
   <main class="maps" id="maps" aria-label="Radar maps"></main>
-
-  <section class="tiles" id="tiles" aria-label="Current conditions"></section>
 </div>
 
 <dialog id="alertDlg">
@@ -428,8 +382,6 @@ function icon(kind, isDay) {
 const ARROW = { up: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`,
                 down: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>`,
                 flat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>` };
-const PLAY = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>`;
-const PAUSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4.2" height="15" rx="1"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1"/></svg>`;
 
 /* =========================================================================
    Build DOM
@@ -547,40 +499,13 @@ ro.observe(mapsEl);
 /* =========================================================================
    Radar — NOAA MRMS quality-controlled base reflectivity (WMS, ~2 min cadence)
    ========================================================================= */
-const framesEl = $("#frames");
-const loadedTimes = new Map();   // time -> number of maps that finished loading it
-
-function frameLabel(iso) { return `${fmtTime(new Date(iso), HOME_TZ)}`; }
-
-function buildFrameButtons() {
-  framesEl.innerHTML = "";
-  state.radarTimes.forEach((iso, i) => {
-    const b = document.createElement("button");
-    b.className = "frame";
-    if ((loadedTimes.get(iso) || 0) >= LOCATIONS.length) b.classList.add("loaded");
-    b.setAttribute("aria-label", `Radar at ${frameLabel(iso)}`);
-    b.innerHTML = `<span class="tip">${frameLabel(iso)}</span>`;
-    b.addEventListener("click", () => { setPlaying(false); showFrame(i); });
-    framesEl.appendChild(b);
-  });
-}
-
 function makeRadarLayer(iso) {
-  const layer = L.tileLayer.wms(RADAR_WMS, {
+  return L.tileLayer.wms(RADAR_WMS, {
     layers: "conus_bref_qcd", format: "image/png8", transparent: true, version: "1.1.1",
     interpolations: "bilinear",   // GeoServer vendor param: smooths the 1 km grid server-side
     time: iso, tileSize: 512, pane: "radar", opacity: 0, maxZoom: 18,
     updateWhenIdle: true, keepBuffer: 1, attribution: "",
   });
-  layer.once("load", () => {
-    const n = (loadedTimes.get(iso) || 0) + 1;
-    loadedTimes.set(iso, n);
-    if (n >= LOCATIONS.length) {
-      const i = state.radarTimes.indexOf(iso);
-      if (i >= 0) framesEl.children[i]?.classList.add("loaded");
-    }
-  });
-  return layer;
 }
 
 // Reuse layers for times we already have; add new ones; drop expired ones.
@@ -596,8 +521,6 @@ function syncRadarLayers() {
     }
     m.radar = state.radarTimes.map(iso => m.radarByTime.get(iso));
   }
-  for (const iso of [...loadedTimes.keys()]) if (!keep.has(iso)) loadedTimes.delete(iso);
-  buildFrameButtons();
 }
 
 function showFrame(i) {
@@ -605,11 +528,10 @@ function showFrame(i) {
   i = Math.max(0, Math.min(i, state.radarTimes.length - 1));
   state.frame = i;
   for (const m of Object.values(maps)) m.radar?.forEach((l, j) => l.setOpacity(j === i ? 0.82 : 0));
-  [...framesEl.children].forEach((c, j) => c.classList.toggle("active", j === i));
   const t = new Date(state.radarTimes[i]);
-  $("#frameTime").textContent = `${fmtTime(t, HOME_TZ)} ${tzAbbr(t, HOME_TZ)}`;
+  $("#frameTime").textContent = fmtTime(t, HOME_TZ);
   const age = Math.max(0, Math.round((Date.now() - t.getTime()) / 60e3));
-  $("#frameAgo").textContent = i === state.radarTimes.length - 1 ? `Latest scan · ${age} min ago` : `${age} min ago`;
+  $("#frameAgo").textContent = `· ${age} min ago${state.playing ? "" : " (paused)"}`;
 }
 
 let animT;
@@ -623,13 +545,10 @@ function loop() {
 }
 function setPlaying(p) {
   state.playing = p;
-  const btn = $("#playBtn");
-  btn.innerHTML = p ? PAUSE : PLAY;
-  btn.setAttribute("aria-label", p ? "Pause radar loop" : "Play radar loop");
   clearTimeout(animT);
   if (p) animT = setTimeout(loop, FRAME_MS);
+  else showFrame(state.frame);   // refresh the "(paused)" note
 }
-$("#playBtn").addEventListener("click", () => setPlaying(!state.playing));
 
 async function fetchRadarTimes() {
   const r = await fetch(`${RADAR_WMS}?service=WMS&version=1.3.0&request=GetCapabilities&_=${Date.now()}`, { cache: "no-store" });
@@ -671,7 +590,7 @@ async function refreshWeather() {
   const q = new URLSearchParams({
     latitude: ALL_POINTS.map(p => p.lat).join(","),
     longitude: ALL_POINTS.map(p => p.lon).join(","),
-    current: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day",
+    current: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day",
     hourly: "temperature_2m,precipitation_probability",
     daily: "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
     temperature_unit: "fahrenheit", wind_speed_unit: "mph", precipitation_unit: "inch",
@@ -747,7 +666,7 @@ function renderTiles() {
         <div class="trend ${tr.dir}" title="${tr.delta >= 0 ? "+" : ""}${tr.delta.toFixed(1)}° vs. 1 hr ago">${ARROW[tr.dir]}${Math.abs(Math.round(tr.delta))}°</div>
         <div class="cond">
           <div class="desc">${esc(desc)}</div>
-          <div class="hilo"><b>${hi != null ? Math.round(hi) + "°" : "—"}</b> / ${lo != null ? Math.round(lo) + "°" : "—"} · Feels <b>${Math.round(c.apparent_temperature)}°</b></div>
+          <div class="hilo"><b>${hi != null ? Math.round(hi) + "°" : "—"}</b> / ${lo != null ? Math.round(lo) + "°" : "—"}</div>
         </div>
       </div>
       <div class="stats">${windHtml(c)}
