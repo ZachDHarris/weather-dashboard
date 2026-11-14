@@ -86,10 +86,9 @@
   .tile {
     position: relative; overflow: hidden;
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 12px 14px 10px; min-height: 150px;
-    display: flex; flex-direction: column; gap: 6px;
+    padding: 9px 12px 8px;
+    display: flex; flex-direction: column; gap: 4px;
   }
-  .tile .spark-wrap { margin-top: auto; }
   .tile::before {
     content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--temp-color, var(--accent));
   }
@@ -103,21 +102,29 @@
   .tile-head .name span { color: var(--muted); font-weight: 500; }
   .tile-head .time { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
   .tile-head .time b { color: var(--text); font-weight: 600; }
-  .tile-main { display: flex; align-items: center; gap: 10px; }
-  .wx-icon { width: 44px; height: 44px; flex: none; }
-  .temp { font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
-  .temp sup { font-size: 20px; font-weight: 600; vertical-align: 16px; margin-left: 1px; letter-spacing: 0; }
-  .trend { display: inline-flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--muted); line-height: 1.1; margin-left: 2px; }
-  .trend svg { width: 18px; height: 18px; }
+  .tile-head .time .rel { color: var(--accent); font-weight: 600; margin-left: 3px; }
+  .tile-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .wx-icon { width: 34px; height: 34px; flex: none; }
+  .temp { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -.5px; white-space: nowrap; }
+  .temp sup { font-size: 14px; font-weight: 600; vertical-align: 14px; margin-left: 1px; letter-spacing: 0; }
+  .trend { display: inline-flex; align-items: center; gap: 1px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .trend svg { width: 14px; height: 14px; }
   .trend.up { color: #fb923c; } .trend.down { color: #60a5fa; } .trend.flat { color: var(--faint); }
   .cond { margin-left: auto; text-align: right; min-width: 0; }
-  .cond .desc { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cond .desc { font-weight: 600; font-size: 13px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .cond .hilo { color: var(--muted); font-size: 12px; white-space: nowrap; }
   .cond .hilo b { color: var(--text); font-weight: 600; }
-  .stats { display: flex; gap: 12px; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; }
+  .stats {
+    display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12px; white-space: nowrap;
+    border-top: 1px solid var(--line); padding-top: 5px; margin-top: 2px; min-width: 0; overflow: hidden;
+  }
+  .stats > span { display: inline-flex; align-items: center; gap: 4px; }
   .stats b { color: var(--text); font-weight: 600; }
-  .spark { height: 34px; width: 100%; display: block; }
-  .spark-labels { display: flex; justify-content: space-between; color: var(--faint); font-size: 10px; margin-top: -2px; }
+  .stats svg { width: 13px; height: 13px; flex: none; }
+  .stats .wind svg { color: var(--accent); transition: transform .4s; }
+  .stats .gust { color: var(--muted); }
+  .stats .rain { color: #7dd3fc; }
+  .stats .rain b { color: #bae6fd; }
   .alert-chip {
     display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer;
     background: rgba(239,68,68,.16); color: #fca5a5; border-radius: 999px;
@@ -224,9 +231,13 @@
   .alert-item pre { white-space: pre-wrap; font: 12px/1.5 inherit; color: #c7d0e0; margin: 0; }
 
   /* ---------- Responsive ---------- */
+  @media (max-width: 1500px) {
+    .tile-head .time .abbr { display: none; }
+    .stats { gap: 10px; }
+  }
   @media (max-width: 1280px) {
-    .temp { font-size: 38px; }
-    .wx-icon { width: 38px; height: 38px; }
+    .temp { font-size: 30px; }
+    .wx-icon { width: 30px; height: 30px; }
     .legend { min-width: 160px; }
     .src { display: none; }
   }
@@ -445,7 +456,8 @@ function tickClocks() {
   const now = new Date();
   $("#clock").innerHTML = `${fmtTime(now, HOME_TZ, { second: "2-digit" })}<small>${tzAbbr(now, HOME_TZ)}</small>`;
   for (const loc of LOCATIONS) {
-    $(`#time-${loc.id}`).innerHTML = `<b>${fmtTime(now, loc.tz)}</b> ${tzAbbr(now, loc.tz)} · ${relToHome(now, loc.tz)}`;
+    const rel = relToHome(now, loc.tz);
+    $(`#time-${loc.id}`).innerHTML = `<b>${fmtTime(now, loc.tz)}</b> <span class="abbr">${tzAbbr(now, loc.tz)}</span>${rel === "Central" ? "" : `<span class="rel">${rel.replace(" hr", "h")}</span>`}`;
   }
   updateStatus();
 }
@@ -643,7 +655,7 @@ async function refreshWeather() {
   const q = new URLSearchParams({
     latitude: ALL_POINTS.map(p => p.lat).join(","),
     longitude: ALL_POINTS.map(p => p.lon).join(","),
-    current: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,dew_point_2m",
+    current: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day",
     hourly: "temperature_2m,precipitation_probability",
     daily: "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
     temperature_unit: "fahrenheit", wind_speed_unit: "mph", precipitation_unit: "inch",
@@ -676,31 +688,25 @@ function trendOf(d) {
   return { dir: delta >= 0.5 ? "up" : delta <= -0.5 ? "down" : "flat", delta };
 }
 
-function sparkline(d) {
+/* ---------- Compact tile footer: wind, humidity, rain chance ---------- */
+const DROP = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.7s-6.5 7.2-6.5 11.8a6.5 6.5 0 0 0 13 0C18.5 9.9 12 2.7 12 2.7z" opacity=".85"/></svg>`;
+const UMBRELLA = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 18 0z" fill="currentColor" stroke="none" opacity=".85"/><path d="M12 12v6.5a2 2 0 0 1-4 0"/></svg>`;
+
+function windHtml(c) {
+  const spd = Math.round(c.wind_speed_10m), gust = Math.round(c.wind_gusts_10m);
+  if (spd < 1) return `<span class="wind" title="Wind">Calm</span>`;
+  // Arrow points the way the wind is blowing (direction is where it comes FROM)
+  const arrow = `<svg viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(${(c.wind_direction_10m + 180) % 360}deg)" aria-hidden="true"><path d="M12 2 19 21 12 17 5 21z"/></svg>`;
+  const gustTxt = gust >= spd + 5 ? ` <span class="gust">gusts <b>${gust}</b></span>` : "";
+  return `<span class="wind" title="Wind from ${compass(c.wind_direction_10m)}">${arrow}<b>${compass(c.wind_direction_10m)} ${spd}</b> mph${gustTxt}</span>`;
+}
+
+function rainHtml(d) {
   const curT = new Date(d.current.time).getTime();
-  const pts = d.hourly.time.map((t, i) => ({ t: new Date(t).getTime(), temp: d.hourly.temperature_2m[i], pop: d.hourly.precipitation_probability?.[i] ?? 0, label: t }))
-    .filter(p => p.t >= curT - 30 * 60e3).slice(0, 13);
-  if (pts.length < 2) return "";
-  const W = 240, H = 34, pad = 3;
-  const lo = Math.min(...pts.map(p => p.temp)), hi = Math.max(...pts.map(p => p.temp));
-  const span = Math.max(hi - lo, 4);
-  const x = i => pad + i * (W - 2 * pad) / (pts.length - 1);
-  const y = v => H - 4 - (v - lo) / span * (H - 12);
-  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.temp).toFixed(1)}`).join("");
-  const bw = (W - 2 * pad) / (pts.length - 1) * 0.55;
-  const bars = pts.map((p, i) => p.pop >= 10 ? `<rect x="${(x(i) - bw / 2).toFixed(1)}" y="${(H - p.pop / 100 * H).toFixed(1)}" width="${bw.toFixed(1)}" height="${(p.pop / 100 * H).toFixed(1)}" rx="1.5" fill="#38bdf8" opacity="${(0.15 + p.pop / 100 * 0.35).toFixed(2)}"/>` : "").join("");
-  const col = tempColor((hi + lo) / 2);
-  const hr = s => { const h = Number(s.slice(11, 13)); return `${h % 12 || 12}${h < 12 ? "a" : "p"}`; };
-  const maxPop = Math.max(...pts.map(p => p.pop));
-  return `
-    <div class="spark-wrap">
-      <svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-        ${bars}
-        <path d="${line}L${x(pts.length - 1).toFixed(1)},${H}L${x(0).toFixed(1)},${H}Z" fill="${col}" opacity=".10"/>
-        <path d="${line}" fill="none" stroke="${col}" stroke-width="1.8" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-      </svg>
-      <div class="spark-labels"><span>Now</span><span>${maxPop >= 10 ? `☂ ${maxPop}% precip` : "Next 12 hrs"}</span><span>${hr(pts[pts.length - 1].label)}</span></div>
-    </div>`;
+  const pops = d.hourly.time.map((t, i) => [new Date(t).getTime(), d.hourly.precipitation_probability?.[i] ?? 0])
+    .filter(([t]) => t >= curT - 30 * 60e3).slice(0, 13).map(([, p]) => p);
+  const max = Math.max(0, ...pops);
+  return max >= 15 ? `<span class="rain" title="Max chance of precipitation, next 12 hours">${UMBRELLA}<b>${max}%</b></span>` : "";
 }
 
 function renderTiles() {
@@ -722,20 +728,17 @@ function renderTiles() {
       <div class="tile-main">
         ${icon(kind, c.is_day)}
         <div class="temp">${Math.round(c.temperature_2m)}<sup>°F</sup></div>
-        <div class="trend ${tr.dir}" title="${tr.delta >= 0 ? "+" : ""}${tr.delta.toFixed(1)}° vs. 1 hr ago">${ARROW[tr.dir]}${tr.delta >= 0 ? "+" : ""}${tr.delta.toFixed(1)}°</div>
+        <div class="trend ${tr.dir}" title="${tr.delta >= 0 ? "+" : ""}${tr.delta.toFixed(1)}° vs. 1 hr ago">${ARROW[tr.dir]}${Math.abs(Math.round(tr.delta))}°</div>
         <div class="cond">
           <div class="desc">${esc(desc)}</div>
-          <div class="hilo">H <b>${hi != null ? Math.round(hi) + "°" : "—"}</b> · L <b>${lo != null ? Math.round(lo) + "°" : "—"}</b></div>
-          <div class="hilo">Feels <b>${Math.round(c.apparent_temperature)}°</b></div>
+          <div class="hilo"><b>${hi != null ? Math.round(hi) + "°" : "—"}</b> / ${lo != null ? Math.round(lo) + "°" : "—"} · Feels <b>${Math.round(c.apparent_temperature)}°</b></div>
         </div>
       </div>
-      <div class="stats">
-        <span>Wind <b>${compass(c.wind_direction_10m)} ${Math.round(c.wind_speed_10m)}</b>${c.wind_gusts_10m > c.wind_speed_10m + 5 ? ` g<b>${Math.round(c.wind_gusts_10m)}</b>` : ""} mph</span>
-        <span>Hum <b>${Math.round(c.relative_humidity_2m)}%</b></span>
-        <span>Dew <b>${Math.round(c.dew_point_2m)}°</b></span>
+      <div class="stats">${windHtml(c)}
+        <span title="Humidity">${DROP}<b>${Math.round(c.relative_humidity_2m)}%</b></span>
+        ${rainHtml(d)}
       </div>
-      <div id="alerts-${loc.id}"></div>
-      ${sparkline(d)}`;
+      <div id="alerts-${loc.id}"></div>`;
     renderAlertChip(loc);
   }
   // pins + panel meta
