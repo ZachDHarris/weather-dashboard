@@ -1,12 +1,12 @@
 # Ezee Fiber Network Weather Board
 
-A single-page, wallboard-style weather dashboard for five sites:
+A single-page, wallboard-style weather dashboard for five regions:
 
 | Site | Radar region |
 |---|---|
 | Houston, TX | Houston Region |
 | Albuquerque, NM | Central New Mexico |
-| Kent, WA | Puget Sound |
+| Kent, WA + Salem, OR | Pacific Northwest |
 | Streamwood + Naperville, IL | Chicagoland |
 | Novi, MI | Metro Detroit |
 
@@ -32,4 +32,4 @@ Maps return to their home view 3 minutes after you pan or zoom. Data refreshes o
 
 ## Editing sites
 
-Locations live in the `LOCATIONS` array near the top of the script in `index.html`. Each entry has the pin coordinates, IANA time zone, and the `bounds` the map opens to.
+Locations live in the `LOCATIONS` array near the top of the script in `index.html`. Each entry has the pin coordinates, IANA time zone, and the `bounds` the map opens to. Extra pins on the same map go in `extra`, and `pinDrop` (pixels) nudges a pin down when it covers the map's own city label.

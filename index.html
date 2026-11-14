@@ -330,14 +330,15 @@
    ========================================================================= */
 const LOCATIONS = [
   { id: "hou",  name: "Houston",     st: "TX", region: "Houston Region",
-    lat: 29.7604, lon: -95.3698, tz: "America/Chicago",
+    lat: 29.7604, lon: -95.3698, tz: "America/Chicago", pinDrop: 18,   // px: nudge the pin below the map's city label
     bounds: [[29.15, -96.45], [30.62, -94.40]] },
   { id: "abq",  name: "Albuquerque", st: "NM", region: "Albuquerque · Central New Mexico",
-    lat: 35.0844, lon: -106.6504, tz: "America/Denver",
+    lat: 35.0844, lon: -106.6504, tz: "America/Denver", pinDrop: 18,
     bounds: [[34.72, -107.05], [35.40, -106.20]] },
-  { id: "kent", name: "Kent",        st: "WA", region: "Kent · Puget Sound",
+  { id: "kent", name: "Kent",        st: "WA", region: "Kent + Salem · Pacific Northwest",
     lat: 47.3809, lon: -122.2348, tz: "America/Los_Angeles",
-    bounds: [[46.55, -123.90], [48.45, -120.80]] },
+    bounds: [[44.70, -124.10], [47.90, -120.95]],
+    extra: [{ id: "sal", name: "Salem", st: "OR", lat: 44.9429, lon: -123.0351, tz: "America/Los_Angeles", pinDrop: 16 }] },
   { id: "stw",  name: "Streamwood",  st: "IL", region: "Streamwood + Naperville · Chicagoland",
     lat: 42.0256, lon: -88.1784, tz: "America/Chicago",
     bounds: [[41.50, -88.75], [42.40, -87.55]],
@@ -474,8 +475,9 @@ const ESRI = "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/{sty
 const ROADS = "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}";
 const BASE_ATTR ='Tiles &copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, &copy; OpenStreetMap contributors · Radar: NOAA MRMS';
 
-function pinHtml(name, temp) {
-  return `<div class="pin"><div class="pt"></div><div class="lbl"><span>${esc(name)}</span>${temp != null ? Math.round(temp) + "°" : ""}</div></div>`;
+function pinHtml(p, temp) {
+  const shift = p.pinDrop ? ` style="transform:translate(-7px, ${p.pinDrop - 7}px)"` : "";
+  return `<div class="pin"${shift}><div class="pt"></div><div class="lbl"><span>${esc(p.name)}</span>${temp != null ? Math.round(temp) + "°" : ""}</div></div>`;
 }
 
 for (const loc of LOCATIONS) {
@@ -495,7 +497,7 @@ for (const loc of LOCATIONS) {
   const markers = {};
   for (const p of [loc, ...(loc.extra || [])]) {
     markers[p.id] = L.marker([p.lat, p.lon], {
-      icon: L.divIcon({ className: "", html: pinHtml(p.name), iconSize: [0, 0] }),
+      icon: L.divIcon({ className: "", html: pinHtml(p), iconSize: [0, 0] }),
       keyboard: false, zIndexOffset: 1000,
     }).addTo(map);
   }
@@ -509,9 +511,14 @@ for (const loc of LOCATIONS) {
     const b = L.latLngBounds(loc.bounds);
     if (!map.getSize().x) return;
     const zFit = map.getBoundsZoom(b, false), zFill = map.getBoundsZoom(b, true);
-    const z = Math.round(((zFit + zFill) / 2) * 4) / 4;
+    // Never zoom in so far that a pin falls off: mirror each pin around the centre so the
+    // check is symmetric, then leave room for the pin dot and its label.
+    const c = b.getCenter();
+    const pts = [loc, ...(loc.extra || [])].flatMap(p => [[p.lat, p.lon], [2 * c.lat - p.lat, 2 * c.lng - p.lon]]);
+    const zPins = map.getBoundsZoom(L.latLngBounds(pts), false, L.point(70, 80));
+    const z = Math.floor(Math.min((zFit + zFill) / 2, zPins) * 4) / 4;
     m.programmatic = true;
-    map.setView(b.getCenter(), z, { animate: false });
+    map.setView(c, z, { animate: false });
     m.programmatic = false;
     m.userMoved = false;
     $(`#home-${loc.id}`).classList.remove("show");
@@ -753,7 +760,7 @@ function renderTiles() {
   for (const m of Object.values(maps)) {
     for (const [pid, mk] of Object.entries(m.markers)) {
       const p = ALL_POINTS.find(x => x.id === pid), d = state.wx[pid];
-      mk.setIcon(L.divIcon({ className: "", html: pinHtml(p.name, d?.current?.temperature_2m), iconSize: [0, 0] }));
+      mk.setIcon(L.divIcon({ className: "", html: pinHtml(p, d?.current?.temperature_2m), iconSize: [0, 0] }));
     }
     const d = state.wx[m.loc.id];
     if (d?.current) {
@@ -792,7 +799,7 @@ async function refreshAlerts() {
   });
   const areaReq = (async () => {
     try {
-      const r = await fetch(`https://api.weather.gov/alerts/active?area=TX,NM,WA,IL,MI,IN,WI`, { headers: H });
+      const r = await fetch(`https://api.weather.gov/alerts/active?area=TX,NM,WA,OR,IL,MI,IN,WI`, { headers: H });
       if (!r.ok) throw new Error(r.status);
       const j = await r.json();
       state.alertFeatures = (j.features || []).filter(f => f.geometry);
