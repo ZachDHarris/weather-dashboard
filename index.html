@@ -499,13 +499,64 @@ ro.observe(mapsEl);
 /* =========================================================================
    Radar — NOAA MRMS quality-controlled base reflectivity (WMS, ~2 min cadence)
    ========================================================================= */
+/* Smoothed radar tiles. MRMS is a ~1 km grid, so zoomed in it looks like stair-stepped
+   blocks. Each tile is fetched with a margin, blurred in a canvas (sized to the grid
+   cell on screen), then the alpha edge is re-sharpened so storms get clean, curved
+   outlines instead of a fuzzy halo. The margin keeps tile seams invisible.
+   Falls back to the plain image where canvas filters aren't supported. */
+const CAN_SMOOTH = (() => {
+  try { const x = document.createElement("canvas").getContext("2d"); x.filter = "blur(1px)"; return x.filter === "blur(1px)"; }
+  catch { return false; }
+})();
+const MRMS_CELL_M = 1113;   // 0.01° of longitude in Web-Mercator metres
+
+const SmoothRadar = L.GridLayer.extend({
+  createTile(coords, done) {
+    const size = this.getTileSize().x;
+    const tile = document.createElement("canvas");
+    tile.width = tile.height = size;
+    const map = this._map, crs = L.CRS.EPSG3857;
+    const nwPx = coords.scaleBy(this.getTileSize());
+    const p1 = crs.project(map.unproject(nwPx, coords.z));
+    const p2 = crs.project(map.unproject(nwPx.add([size, size]), coords.z));
+    const mpp = (p2.x - p1.x) / size;                                   // metres per tile pixel
+    const blur = Math.min(8, Math.max(0.8, 0.65 * MRMS_CELL_M / mpp));  // ≈ grid cell on screen
+    const pad = CAN_SMOOTH ? Math.ceil(blur * 3) + 4 : 0, full = size + 2 * pad;
+    const bbox = [p1.x - pad * mpp, p2.y - pad * mpp, p2.x + pad * mpp, p1.y + pad * mpp].map(v => v.toFixed(1)).join(",");
+    const url = `${RADAR_WMS}?service=WMS&request=GetMap&version=1.1.1&layers=conus_bref_qcd&styles=` +
+      `&format=image%2Fpng&transparent=true&srs=EPSG%3A3857&bbox=${bbox}&width=${full}&height=${full}` +
+      `&time=${encodeURIComponent(this.options.time)}`;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const tctx = tile.getContext("2d");
+      if (!CAN_SMOOTH) { tctx.drawImage(img, 0, 0, size, size); return done(null, tile); }
+      try {
+        const work = document.createElement("canvas");
+        work.width = work.height = full;
+        const w = work.getContext("2d", { willReadFrequently: true });
+        w.filter = `blur(${blur.toFixed(2)}px)`;
+        w.drawImage(img, 0, 0);
+        const d = w.getImageData(0, 0, full, full), px = d.data;
+        for (let i = 3; i < px.length; i += 4) {          // smoothstep the alpha edge
+          const a = px[i];
+          if (a === 0 || a === 255) continue;
+          const t = Math.min(1, Math.max(0, (a / 255 - 0.32) / 0.22));
+          px[i] = Math.round(t * t * (3 - 2 * t) * 255);
+        }
+        tctx.putImageData(d, -pad, -pad);
+      } catch { tctx.drawImage(img, pad, pad, size, size, 0, 0, size, size); }
+      done(null, tile);
+    };
+    img.onerror = e => done(e, tile);
+    img.src = url;
+    return tile;
+  },
+});
+
 function makeRadarLayer(iso) {
-  return L.tileLayer.wms(RADAR_WMS, {
-    layers: "conus_bref_qcd", format: "image/png8", transparent: true, version: "1.1.1",
-    interpolations: "bilinear",   // GeoServer vendor param: smooths the 1 km grid server-side
-    time: iso, tileSize: 512, pane: "radar", opacity: 0, maxZoom: 18,
-    updateWhenIdle: true, keepBuffer: 1, attribution: "",
-  });
+  return new SmoothRadar({ time: iso, tileSize: 512, pane: "radar", opacity: 0, maxZoom: 18,
+    updateWhenIdle: true, keepBuffer: 1 });
 }
 
 // Reuse layers for times we already have; add new ones; drop expired ones.
